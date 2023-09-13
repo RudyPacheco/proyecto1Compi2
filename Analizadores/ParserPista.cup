@@ -1,0 +1,606 @@
+/*Seccion codigo Imports Package */
+package com.mycompany.servidormusica.analizadores;
+
+import com.mycompany.servidormusica.declaracionAsignacion.Asignacion;
+import com.mycompany.servidormusica.declaracionAsignacion.Expresion;
+import com.mycompany.servidormusica.declaracionAsignacion.ManejoArreglos;
+import com.mycompany.servidormusica.declaracionAsignacion.FuncionesNativas;
+import com.mycompany.servidormusica.declaracionAsignacion.NodoOperacion;
+import com.mycompany.servidormusica.declaracionAsignacion.Operacion;
+import com.mycompany.servidormusica.declaracionAsignacion.TipoDato;
+import com.mycompany.servidormusica.declaracionAsignacion.TipoOperacion;
+import com.mycompany.servidormusica.declaracionAsignacion.funcionesArreglo.FuncionesArreglos;
+import com.mycompany.servidormusica.declaracionAsignacion.funcionesArreglo.NumsOrdenamiento;
+import com.mycompany.servidormusica.instrucciones.Instruccion;
+import com.mycompany.servidormusica.instrucciones.bifurcaciones.validarSwitch;
+import com.mycompany.servidormusica.instrucciones.bifurcaciones.DoWhile;
+import com.mycompany.servidormusica.instrucciones.bifurcaciones.Else;
+import com.mycompany.servidormusica.instrucciones.bifurcaciones.For;
+import com.mycompany.servidormusica.instrucciones.bifurcaciones.IF;
+import com.mycompany.servidormusica.instrucciones.bifurcaciones.Switch;
+import com.mycompany.servidormusica.instrucciones.bifurcaciones.While;
+import com.mycompany.servidormusica.instrucciones.funciones.DeclaracionVariables;
+import com.mycompany.servidormusica.instrucciones.funciones.Funcion;
+import com.mycompany.servidormusica.instrucciones.funciones.LlamadaFuncion;
+import com.mycompany.servidormusica.instrucciones.funciones.Mensaje;
+import com.mycompany.servidormusica.instrucciones.funciones.Continuar;
+import com.mycompany.servidormusica.instrucciones.funciones.Retornar;
+import com.mycompany.servidormusica.instrucciones.music.SentenciaReproducir;
+import com.mycompany.servidormusica.manejoErrores.ErrorSemantico;
+import com.mycompany.servidormusica.manejoErrores.ErrorSintactico;
+import com.mycompany.servidormusica.manejoErrores.ErroresSingleton;
+import com.mycompany.servidormusica.pista.Pista;
+import com.mycompany.servidormusica.tablaSimbolos.TablaSimbolo;
+import com.mycompany.servidormusica.tablaSimbolos.Variable;
+import com.mycompany.servidormusica.token.Token;
+
+import java.util.List;
+
+
+
+ /* Codigo java del parser*/
+ parser code {:   
+
+        private TipoDato tipo;
+        private Pista pista;
+        private boolean asigna= false;
+        private Operation instrOp;
+        private ArrayList<ErrorSemantico> errorsSemanticos = new ArrayList<ErrorSemantico>();
+        private ArrayList<Variable> parametros = new ArrayList<Variable>();
+        private ArrayList<Operation> parametroLllmada = new ArrayList<>();
+        private int cont = 0;
+        private int contDimes=0;
+
+
+ /* Connect this parser to a scanner!*/
+	public parser(LexerPista analizadorLexico) {
+		super(analizadorLexico);
+	}
+
+
+        public Pista getPista() {
+                return pista;
+        }
+       
+        public ArrayList<ErrorSemantico> getErrorsSemanticos() {
+                return errorsSemanticos;
+        }
+
+        public void setErrorsSemanticos(ArrayList<ErrorSemantico> errorsSemanticos) {
+                this.errorsSemanticos = errorsSemanticos;
+        }
+
+
+
+        @Override
+        public void syntax_error(Symbol tok) {
+                String esperado = "Terminales de sentencias: ), } o ;";
+	    try{
+                List<Integer> lista=expected_token_ids();
+                if(!lista.isEmpty()){
+                       if(lista.get(0)<=50){
+                               esperado = sym.terminalNames[lista.get(0)];
+                        } 
+                }
+	        Token token = (Token) tok.value;
+                report_error("",null);
+                ErroresSingleton.getInstance().getErroresSintacticos().add(new ErrorSintactico(token, "No pertenece a la gramatica, en su lugar se esperaba: "+ esperado));
+
+            }catch(Exception e){
+                Token token = (Token) tok.value;
+                report_error("",null);
+                ErroresSingleton.getInstance().getErroresSintacticos().add(new ErrorSintactico(token, "No pertenece a la gramatica, en su lugar se esperaba: "+ esperado));
+
+	    }	
+	}
+
+         @Override
+        public List<Integer> expected_token_ids() {
+                return super.expected_token_ids();
+        }
+
+
+    public void unrecovered_syntax_error(Symbol cur_token) {
+        if (cur_token.sym == sym.EOF) {
+             ErroresSingleton.getInstance().getErroresSintacticos().add(new ErrorSintactico(new Token("No recuperado", 1, 1), "Posiblemente no se encontro un ; o un ) o un } para la recuperacion adecuada"));
+        }else{
+             Token token = (Token) cur_token.value;
+             report_error("",null);
+             ErroresSingleton.getInstance().getErroresSintacticos().add(new ErrorSintactico(token, "Token no pertenece a la gramatica y su recuperacion es incierta"));
+
+        }
+    }
+    
+:};
+
+
+/*seccion de Terminales*/ 
+terminal Token PISTA, ID, EXTIENDE, LLAVEA, LLAVEC, COMA ,PARENTESISA, PARENTESISC, NUM_ENTERO, DECIMAL, CONT_CARACTER, CONT_CADENA,  FALSO, VERDADERO, MAS, MENOS, POR, DIVISION, MODULO, POTENCIA, MAYORQUE, MENORQUE, MAYOROIGUAL, MENOROIGUAL, NOTEQUALS, EQUALS, ENTERO, DOBLE, BOOLEAN, CADENA, CARACTER, IGUAL, PUNTOCOMA, VAR, KEEP, ISNULO, MIENTRAS;
+terminal Token OR, XOR, NOR, AND, NAND, NOT, SUMA_IMPLICITA, INCREMENT, DECREMENT, SI, SINO, DOPUNTO, SWITCH, SALIR, CASO, DEFAULT,PARA, HACER, RETORNA, CORCHETA, CORCHETC,ARREGLO, ESPERAR, MENSAJE, ORDENAR, LONGITUD, CONTINUAR, PRINCIPAL, SUMARIZAR, REPRODUCIR;
+terminal Token NOTA_DO, NOTA_DO_S, NOTA_RE, NOTA_RE_S, NOTA_MI, NOTA_FA, NOTA_FA_S, NOTA_SOL, NOTA_SOL_S, NOTA_LA, NOTA_LA_S, ASCENDENTE, DESCENDENTE, PARES, IMPARES, PRIMOS;
+
+
+/*seccion de No Terminales*/
+non terminal inicio, def_pista, extras_pista, c_extiende, items_extiende, sentencias_global, sentencia_global, def_variable, variables, tipo, items_coma, items, asignacion, operation, terminal_casos, asignacion_var, comodin_fun, parametros, comodin_param, cierre_fun, def_funciones, sentencia, variables_fun, asignacion_var_fun, op_incremt_decremet_fun;
+non terminal items_coma_fun, items_fun, sentencias, terminales_increment_fun, llamada_metod, parametros_llamada, definir_elseif, definir_else, def_if, def_if_complete, condition, sentencias_bifuraciones, terminales_switch, caso_sitchw, cases, def_switch, op_incremt_decremet_for, var_iterador, condition_for, definir_for, definir_while, definir_dowhile, tipo_fun, asignacion_iterador;
+non terminal terminal_casos_param, definir_fun_principal, funcion_mensaje, funcion_reproducir, def_nota_musical, definir_sentencias_repro, definir_fun_esperar, asignaciones_recursivas, varios_dimensiones, asignacion_arreglo, definir_sin_dimens, definir_dimension_arreglo, definir_tipo_arreglo, definir_fun_arreglo, ids, decla_array_inicializado, ids_fun, def_tipo_arreglo_fun, decla_arry, asig_arreglo;
+non terminal valor_arreglo, definir_fun_ordenar, formaOrdenar, definir_fun_sumarizar, sentencias_switch, sentencia_switch, definir_fun_longitud;
+
+
+/* agregado de precedencias */
+precedence left OR, XOR, NOR;
+precedence left AND, NAND;
+precedence right NOT;
+precedence left EQUALS, NOTEQUALS, MAYORQUE, MAYOROI, MENORQUE, MENOROIGUAL;
+precedence right ISNULO;
+precedence left MENOS, MAS;
+precedence left POR, DIVISION, MODULO;
+precedence left POTENCIA;
+
+/* seccion de Gramatica */
+start with  inicio;
+
+inicio ::= def_pista                                                            /*{:pista.autoguardar();:}*/
+        | 
+        ;
+
+
+/*Gramatica para definicion de la pista*/
+def_pista ::=  extras_pista LLAVEA sentencias_global LLAVEC                    {:pista.referenciarTablasPadres(); pista.realizarAccionesSemanticas();:}          
+        ;
+
+
+extras_pista ::= PISTA ID:pist                                                 {:pista = new Pista(pist.getLexeme(), new TablaSimbol(errorsSemanticos), errorsSemanticos);:}      
+                | PISTA ID:pist c_extiende:array                          {:pista = new Pista( (ArrayList<Token>)  array,pist.getLexeme(), new TablaSimbol(errorsSemanticos), errorsSemanticos);:}
+                ;       
+
+c_extiende ::= EXTIENDE ID:id items_extiende:array                        {:ArrayList<Token> ids = (ArrayList<Token>) array; ids.add(id); RESULT = ids;:}
+                ;
+
+items_extiende ::= COMA ID:id items_extiende:array                              {:ArrayList<Token> ids = (ArrayList<Token>) array; ids.add(id); RESULT = ids;:}
+                |                                                               {:RESULT= new ArrayList<>();:}
+                ;
+
+
+/*Sentencias goblales */
+ sentencias_global ::= sentencia_global sentencias_global
+        |
+        |error LLAVEC
+        |error PUNTOCOMA
+        ;
+
+
+ sentencia_global ::=  def_variable
+                    | asignacion_var
+                    | def_funciones:fun                                             {:pista.pushFuncion((Funcion) fun);:}          
+                    | definir_fun_principal:funPrin                                     {:pista.setFunPrincipal((Funcion) funPrin); :}                                          
+                    | definir_fun_arreglo
+
+                    ;
+
+
+ def_variable ::=  variables                                                    {:pista.carpturarVariablesGlobales(tipo,asigna, instrOp); asigna= false;:}                                                 
+        | KEEP variables                                                        {:pista.carpturarVariablesGlobales(tipo,asigna, instrOp); asigna= false;:}                                             
+        ;
+
+
+ variables ::= VAR tipo items_coma                                                                
+        ; 
+
+
+
+ items_coma ::= ID:id items                                         {:pista.getTableSimbolGoblal().capturarIds((Token) id);:}                                                                                                                                                
+            ;
+
+
+ items ::= IGUAL asignacion PUNTOCOMA                                                                       
+        | COMA items_coma                                       
+        | PUNTOCOMA                                                                                                  
+        ; 
+
+
+
+tipo ::= ENTERO                                         {:tipo=TipoDato.ENTERO;:}                                                                              
+        | DOBLE                                         {:tipo=TipoDato.DECIMAL;:}                                                    
+        | BOOLEAN                                       {:tipo=TipoDato.BOOLEAN;:}                                                     
+        | CADENA                                        {:tipo=TipoDato.CADENA;:}                                                     
+        | CARACTER                                      {:tipo=TipoDato.CHAR;:}                                                       
+        ; 
+
+
+asignacion_var ::= ID:id IGUAL asignacion:opera PUNTOCOMA                {:pista.capturarAsignacion(id, (Operation) opera);:}
+                ;
+
+/*Gramatica para asignacion */
+ asignacion ::= operation:rootOp                                        {:RESULT = new Operation((NodoOperation) rootOp); instrOp =new Operation((NodoOperation) rootOp); asigna= true;:}                                               
+            ;
+
+
+
+operation ::= operation:opLeft MAS operation:opRight                                            {:RESULT = new NodoOperation(TipoOperacion.SUMA, (NodoOperation) opLeft, (NodoOperation) opRight);:}   		 
+	| operation:opLeft MENOS operation:opRight                                              {:RESULT = new NodoOperation(TipoOperacion.RESTA, (NodoOperation) opLeft, (NodoOperation) opRight);:}			 
+	| operation:opLeft POR operation:opRight                                                {:RESULT = new NodoOperation(TipoOperacion.MULTIPLICACION, (NodoOperation) opLeft,(NodoOperation) opRight);:}				 
+	| operation:opLeft DIVISION operation:opRight                                           {:RESULT = new NodoOperation(TipoOperacion.DIVISION, (NodoOperation) opLeft, (NodoOperation) opRight);:}			 
+	| operation:opLeft MODULO operation:opRight                                             {:RESULT = new NodoOperation(TipoOperacion.MODULO, (NodoOperation) opLeft, (NodoOperation) opRight);:}			 
+	| operation:opLeft POTENCIA operation:opRight                                           {:RESULT = new NodoOperation(TipoOperacion.POTENCIA, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | operation:opLeft MAYORQ operation:opRight                                             {:RESULT = new NodoOperation(TipoOperacion.MAYORQ, (NodoOperation) opLeft, (NodoOperation) opRight);:}                                                      
+        | operation:opLeft MENORQ operation:opRight                                             {:RESULT = new NodoOperation(TipoOperacion.MENORQ, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | operation:opLeft MAYOROI operation:opRight                                            {:RESULT = new NodoOperation(TipoOperacion.MAYOROI, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | operation:opLeft MENOROI operation:opRight                                            {:RESULT = new NodoOperation(TipoOperacion.MENOROI, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | operation:opLeft NOTEQUALS operation:opRight                                          {:RESULT = new NodoOperation(TipoOperacion.NOTEQUALS, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | operation:opLeft EQUALS operation:opRight                                             {:RESULT = new NodoOperation(TipoOperacion.EQUALS, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | ISNULO operation:opRight                                                              {:RESULT = new NodoOperation(TipoOperacion.ISNULO, null, (NodoOperation) opRight);:}                                                      
+        | NOT operation:opRight                                                                 {:RESULT = new NodoOperation(TipoOperacion.NOT, null, (NodoOperation) opRight);:}			 
+        | operation:opLeft OR operation:opRight                                                 {:RESULT = new NodoOperation(TipoOperacion.OR, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | operation:opLeft AND operation:opRight                                                {:RESULT = new NodoOperation(TipoOperacion.AND, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | operation:opLeft NAND operation:opRight                                               {:RESULT = new NodoOperation(TipoOperacion.NAND, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | operation:opLeft NOR operation:opRight                                                {:RESULT = new NodoOperation(TipoOperacion.NOR, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | operation:opLeft XOR operation:opRight                                                {:RESULT = new NodoOperation(TipoOperacion.XOR, (NodoOperation) opLeft, (NodoOperation) opRight);:}
+        | terminal_casos:nodoOp                                                                 {:RESULT = nodoOp;:}    													 
+	| PARENTESISA operation:nodoOp PARENTESISC                                              {:RESULT = nodoOp;:} 					
+
+        ;
+
+
+ terminal_casos ::= ID:val                                              {:RESULT = new NodoOperation(new Dato(false,(Token) val,TipoDato.ENTERO,val.getLexeme()));:}                                                 
+                | llamada_metod:nodFun                                  {: parametroLllmada.clear(); RESULT = nodFun;:}
+                | NUM_ENTERO:val                                        {:RESULT = new NodoOperation(new Dato(true,(Token) val,TipoDato.ENTERO));:}            
+                | DECIMAL:val                                           {:RESULT = new NodoOperation(new Dato(true,(Token) val,TipoDato.DECIMAL));:}               
+                | CONT_CARACTER:val                                     {:RESULT = new NodoOperation(new Dato(true,(Token) val,TipoDato.CHAR));:}         
+                | CONT_CADENA:val                                       {:RESULT = new NodoOperation(new Dato(true,(Token) val,TipoDato.CADENA));:}           
+                | FALSO:val                                             {:RESULT = new NodoOperation(new Dato(true,(Token) val,TipoDato.BOOLEAN));:} 
+                | VERDADERO:val                                         {:RESULT = new NodoOperation(new Dato(true,(Token) val,TipoDato.BOOLEAN));:}             
+                | valor_arreglo:valArr                                  {:RESULT = valArr;:}
+                | funcion_reproducir:repro                              {:NodoOpFuncionesNativas nodo = new NodoOpFuncionesNativas(); nodo.capturarReproducir((SentenciaReproducir) repro); RESULT = nodo;:}
+                | definir_fun_esperar:repro                                 {:NodoOpFuncionesNativas nodo = new NodoOpFuncionesNativas(); nodo.capturarReproducir((SentenciaReproducir) repro); RESULT = nodo;:} 
+                | definir_fun_ordenar:funOrder                              {:NodoOpFuncionesNativas nodo = new NodoOpFuncionesNativas(); nodo.capturarOrdenaar((FuncionesArreglo) funOrder); RESULT = nodo;:}
+                | definir_fun_sumarizar:sumari                               {:NodoOpFuncionesNativas nodo = new NodoOpFuncionesNativas(); nodo.capturarOrdenaar((FuncionesArreglo) sumari); RESULT = nodo;:}
+                | definir_fun_longitud:longs                                 {:NodoOpFuncionesNativas nodo = new NodoOpFuncionesNativas(); nodo.capturarOrdenaar((FuncionesArreglo) longs); RESULT = nodo;:}                                                                                                  
+                ;
+ 
+
+
+
+def_funciones  ::= comodin_fun:fun LLAVEA sentencias:sent LLAVEC                    {:Funcion funs = (Funcion) fun; funs.setInstruccions((ArrayList<Instruccions>) sent); parametros.clear(); RESULT = funs; :}
+
+                ;
+
+comodin_fun ::= KEEP tipo_fun:tip ID:id PARENTESISA cierre_fun                                  {:RESULT = new Funcion(parametros, new TablaSimbol(errorsSemanticos, true),id.getLexeme(),(Token) id, (TipoDato)tip); :}                                 
+                | KEEP ID:id PARENTESISA cierre_fun                                             {:RESULT = new Funcion(parametros, new TablaSimbol(errorsSemanticos, true),id.getLexeme(),(Token) id); :}                                       
+                | tipo_fun:tip ID:id PARENTESISA cierre_fun                                     {:RESULT = new Funcion(parametros, new TablaSimbol(errorsSemanticos, true),id.getLexeme(),(Token) id, (TipoDato)tip); :}                                      
+                | ID:id PARENTESISA cierre_fun                                                {:RESULT = new Funcion(parametros, new TablaSimbol(errorsSemanticos, true),id.getLexeme(),(Token) id); :}
+                ;
+
+cierre_fun ::= parametros PARENTESISC
+                | PARENTESISC
+                ;
+
+
+tipo_fun ::= ENTERO                                     {:RESULT =TipoDato.ENTERO;:}                                                                              
+        | DOBLE                                         {:RESULT =TipoDato.DECIMAL;:}                                                    
+        | BOOLEAN                                       {:RESULT =TipoDato.BOOLEAN;:}                                                     
+        | CADENA                                        {:RESULT =TipoDato.CADENA;:}                                                     
+        | CARACTER                                      {:RESULT =TipoDato.CHAR;:}                                                       
+        ; 
+
+
+
+
+parametros ::= comodin_param
+            | comodin_param COMA parametros
+            ;
+            
+comodin_param ::= tipo ID:id                                                            {:parametros.add(new Variable((Token)id, tipo, "",false));:}          
+                ;
+
+
+
+ sentencias ::= sentencia:sent sentencias:array                                         {: ArrayList<Instruccions> arr= (ArrayList<Instruccions>)array; arr.add(0,(Instruccions)sent); RESULT = arr;:}                                          
+        |                                                                               {:RESULT = new ArrayList<Instruccions>();:}
+        | error LLAVEC
+        | error PUNTOCOMA
+        ;
+
+
+ sentencia ::=  variables_fun:array                                                     {:RESULT = new DeclaracionVar((ArrayList<Variable>)array,asigna,(Operation) instrOp) ;:}
+        | asignacion_var_fun:asig                                                       {:RESULT = asig;:}
+        | op_incremt_decremet_fun:decrInc PUNTOCOMA                                     {:RESULT = decrInc;:}
+        | llamada_metod:metod PUNTOCOMA                                                 {: parametroLllmada.clear(); RESULT = new LlamadaFuncion((NodoOperation) metod);:}
+        | sentencias_bifuraciones:sentbifu                                              {:RESULT = sentbifu;:}
+        | RETORNA:tok asignacion:op PUNTOCOMA                                            {:RESULT = new SentenciaRetorna((Operation) op, (Token) tok, errorsSemanticos);:}
+        | funcion_mensaje:funMjs                                                            {:RESULT = funMjs;:}
+        | funcion_reproducir:repro   PUNTOCOMA                                                   {:RESULT = repro;:}
+        | definir_fun_esperar:repro      PUNTOCOMA                                                   {:RESULT = repro;:}
+        | decla_array_inicializado:arreglo                                              {:pista.setSizeArray(0); cont = 0; contDimes = 0; pista.getTableSimbolGoblal().getIds().clear(); RESULT = arreglo;:}
+        | decla_arry:arreglo                                                            {:pista.setSizeArray(0); cont = 0; contDimes = 0; pista.getTableSimbolGoblal().getIds().clear(); RESULT = arreglo;:}
+        | asig_arreglo:asig                                                             {:RESULT = asig;:}
+        | definir_fun_ordenar:orde PUNTOCOMA                                                {:RESULT = orde;:}
+        | definir_fun_sumarizar:sumari   PUNTOCOMA                                                   {:RESULT = sumari;:}
+        | CONTINUAR                                                                     {:RESULT = new SentenciaContinuar();:}
+        | definir_fun_longitud:longs       PUNTOCOMA                                          {:RESULT = longs;:}                                                         
+        | SALIR                                                                         {:RESULT = new SentenciaContinuar();:}
+        ;
+
+
+asignacion_var_fun ::= ID:id IGUAL asignacion:op PUNTOCOMA                              {:RESULT = new Asignacion((Operation)op,(Token)id,true);:}
+                    ;
+
+
+variables_fun ::= VAR tipo items_coma_fun: array                                      {:RESULT  = array;:}
+        ; 
+
+
+
+ items_coma_fun ::= ID:id items_fun:array                                        {:ArrayList<Variable> arryTmp = (ArrayList<Variable>) array; arryTmp.add( new Variable((Token)id,tipo, "", asigna)); RESULT = arryTmp;:}                                                          
+            ;
+
+
+ items_fun ::= IGUAL asignacion PUNTOCOMA                               {:RESULT = new ArrayList<Variable>();:}        
+        | COMA items_coma_fun:array                                     {:RESULT = array;:}
+        | PUNTOCOMA                                                     {:RESULT = new ArrayList<Variable>();:} 
+        ; 
+
+
+op_incremt_decremet_fun ::= ID:id SUMA_IMPLICITA  terminales_increment_fun:nodRight                             {:NodoOperation nodLeft = new NodoOperation(new Dato(false, (Token) id, TipoDato.ENTERO, id.getLexeme())); NodoOperation root = new NodoOperation(TipoOperacion.SUMA, nodLeft, (NodoOperation) nodRight ); RESULT = new Asignacion(new Operation(root), (Token) id, true);:}
+                    | ID:id INCREMENT                                                                           {:NodoOperation nodLeft = new NodoOperation(new Dato(false, (Token) id, TipoDato.ENTERO, id.getLexeme())); NodoOperation nodRight = new NodoOperation(new Dato(true, 1, TipoDato.ENTERO)); NodoOperation root = new NodoOperation(TipoOperacion.SUMA, nodLeft, nodRight ); RESULT = new Asignacion(new Operation(root), (Token) id, true);:}
+                    | ID:id DECREMENT                                                                           {:NodoOperation nodLeft = new NodoOperation(new Dato(false, (Token) id, TipoDato.ENTERO, id.getLexeme())); NodoOperation nodRight = new NodoOperation(new Dato(true, 1, TipoDato.ENTERO)); NodoOperation root = new NodoOperation(TipoOperacion.RESTA, nodLeft, nodRight); RESULT = new Asignacion(new Operation(root), (Token) id, true);:}
+                    ;
+
+terminales_increment_fun ::= ID:val         {:RESULT = new NodoOperation(new Dato(false,(Token) val,TipoDato.ENTERO,val.getLexeme()));:}
+                        | NUM_ENTERO:val    {:RESULT = new NodoOperation(new Dato(true,(Token) val,TipoDato.ENTERO));:}
+                        | DECIMAL:val       {:RESULT = new NodoOperation(new Dato(true,(Token) val,TipoDato.DECIMAL));:}
+                        ;
+
+
+
+llamada_metod ::= ID:id PARENTESISA parametros_llamada PARENTESISC                 {:RESULT = new NodoOperation((Token) id, parametroLllmada,pista);:} 
+                ;
+
+
+
+parametros_llamada ::= terminal_casos_param COMA parametros_llamada     
+            | terminal_casos_param                                      
+            |
+            ;
+
+
+ terminal_casos_param ::= asignacion:asig                    {:parametroLllmada.add((Operation) asig);:}
+                        ;
+
+
+sentencias_bifuraciones ::= def_if_complete:sent     {:RESULT = sent;:}
+                        | def_switch:sent            {:RESULT = sent;:}
+                        | definir_for:sent               {:RESULT = sent;:}
+                        | definir_while:sent             {:RESULT = sent;:}
+                        | definir_dowhile:sent          {:RESULT = sent;:} 
+                        ;
+
+                        
+
+ condition ::= operation:rootOp                                                                 {:RESULT = new Operation((NodoOperation) rootOp);:}                                                  
+            ;
+
+
+def_if_complete ::= def_if:senIf                                                                {:RESULT = senIf;:} 
+                | def_if:senIf definir_else:senElse                                                 {:SentenciaIF nIf = (SentenciaIF) senIf; nIf.setSentenciaElse((SentenciaElse) senElse); RESULT = nIf;:}
+                | def_if:senIf  definir_elseif:senIfs                                              {:SentenciaIF nIf = (SentenciaIF) senIf; nIf.setSentenciaElseIf((SentenciaIF) senIfs); RESULT = nIf;:}
+                ;
+
+
+def_if ::= SI PARENTESISA condition:op  PARENTESISC LLAVEA sentencias:sent LLAVEC               {:RESULT = new SentenciaIF((ArrayList<Instruccions>) sent,(Operation)op, new TablaSimbol(errorsSemanticos) );:}
+        ;
+
+
+definir_else ::= SINO LLAVEA sentencias:sent LLAVEC                                                 {:RESULT = new SentenciaElse((ArrayList<Instruccions>) sent, new TablaSimbol(errorsSemanticos) );:}
+                ;
+
+
+definir_elseif ::= SINO def_if:senIf                                                               {:RESULT = senIf;:}                                                                               
+                | SINO def_if:senIf definir_else:senElse                                            {:SentenciaIF nIf = (SentenciaIF) senIf; nIf.setSentenciaElse((SentenciaElse) senElse); RESULT = nIf;:}                                                                    
+                | SINO def_if:senIf  definir_elseif:senIfs                                         {:SentenciaIF nIf = (SentenciaIF) senIf; nIf.setSentenciaElseIf((SentenciaIF) senIfs); RESULT = nIf;:}                                                                                     
+                ;
+
+
+
+def_switch ::= SWITCH PARENTESISA ID:id PARENTESISC LLAVEA cases:arryC LLAVEC                            {:RESULT = new SentenciaSwitch((ArrayList<CasoSwitch> ) arryC, new Variable((Token) id, TipoDato.ENTERO, "",false),  new TablaSimbol(errorsSemanticos));:}
+        ;
+
+
+ cases ::= caso_sitchw:cass SALIR cases:arryC                                                               {:ArrayList<CasoSwitch> arr = (ArrayList<CasoSwitch>)arryC; arr.add(0,(CasoSwitch)cass); RESULT = arr;:}
+        |                                                                                               {:RESULT = new ArrayList<CasoSwitch>(); :}
+
+        ;
+
+
+ caso_sitchw ::= CASO terminales_switch:dat DOPUNTO sentencias_switch:inst                                 {:RESULT = new CasoSwitch((ArrayList<Instruccions>)inst,(Dato) dat);:}         
+            | DEFAULT DOPUNTO sentencias_switch:inst                                                   {:RESULT = new CasoSwitch((ArrayList<Instruccions>)inst,null);:}             
+            ;
+
+
+
+terminales_switch ::= ID:val                                    {:RESULT = new Dato(false, (Token) val, TipoDato.ENTERO, val.getLexeme());;:}        
+                | NUM_ENTERO:val                                {:RESULT = new Dato(true, (Token) val, TipoDato.ENTERO);:}                                                           
+                | DECIMAL:val                                   {:RESULT = new Dato(true, (Token) val, TipoDato.DECIMAL);:}                                                 
+                | CONT_CARACTER:val                             {:RESULT = new Dato(true, (Token) val, TipoDato.CHAR);:}                                                     
+                | CONT_CADENA:val                               {:RESULT = new Dato(true, (Token) val, TipoDato.CADENA);:}                                                         
+                | FALSO:val                                     {:RESULT = new Dato(true, (Token) val, TipoDato.BOOLEAN);:}                                                     
+                | VERDADERO:val                                 {:RESULT = new Dato(true, (Token) val, TipoDato.BOOLEAN);:}                                                     
+                ;
+
+
+ sentencias_switch ::= sentencia_switch:sent sentencias_switch:array                                         {: ArrayList<Instruccions> arr= (ArrayList<Instruccions>)array; arr.add(0,(Instruccions)sent); RESULT = arr;:}                                          
+        |                                                                                        {:RESULT = new ArrayList<Instruccions>();:}
+        | error LLAVEC
+        | error PUNTOCOMA
+        ;
+
+
+ sentencia_switch ::=  variables_fun:array                                                     {:RESULT = new DeclaracionVar((ArrayList<Variable>)array,asigna,(Operation) instrOp) ;:}
+        | asignacion_var_fun:asig                                                       {:RESULT = asig;:}
+        | op_incremt_decremet_fun:decrInc PUNTOCOMA                                     {:RESULT = decrInc;:}
+        | llamada_metod:metod PUNTOCOMA                                                 {: parametroLllmada.clear(); RESULT = new LlamadaFuncion((NodoOperation) metod);:}
+        | sentencias_bifuraciones:sentbifu                                              {:RESULT = sentbifu;:}
+        | RETORNA:tok asignacion:op PUNTOCOMA                                            {:RESULT = new SentenciaRetorna((Operation) op, (Token) tok, errorsSemanticos);:}
+        | funcion_mensaje:funMjs                                                            {:RESULT = funMjs;:}
+        | funcion_reproducir:repro     PUNTOCOMA                                                 {:RESULT = repro;:}
+        | definir_fun_esperar:repro        PUNTOCOMA                                                 {:RESULT = repro;:}
+        | decla_array_inicializado:arreglo                                              {:pista.setSizeArray(0); cont = 0; contDimes = 0; pista.getTableSimbolGoblal().getIds().clear(); RESULT = arreglo;:}
+        | decla_arry:arreglo                                                            {:pista.setSizeArray(0); cont = 0; contDimes = 0; pista.getTableSimbolGoblal().getIds().clear(); RESULT = arreglo;:}
+        | asig_arreglo:asig                                                             {:RESULT = asig;:}
+        | definir_fun_ordenar:orde PUNTOCOMA                                                {:RESULT = orde;:}
+        | definir_fun_sumarizar:sumari   PUNTOCOMA                                           {:RESULT = sumari;:}
+        | definir_fun_longitud:longs       PUNTOCOMA                                          {:RESULT = longs;:}                                                         
+        | CONTINUAR                                                                     {:RESULT = new SentenciaContinuar();:}
+        ;
+
+
+
+ definir_for ::= PARA PARENTESISA condition_for:fors PARENTESISC  LLAVEA sentencias:instr LLAVEC                          {:SentenciaFor senFor = (SentenciaFor)fors; senFor.setInstruccions((ArrayList<Instruccions>) instr); RESULT = senFor;:}
+        ;
+
+
+ condition_for ::= var_iterador:inst PUNTOCOMA condition:condi PUNTOCOMA op_incremt_decremet_for:increm                  {:RESULT = new SentenciaFor((Instruccions)inst,  new TablaSimbol(errorsSemanticos), (Asignacion)increm, (Operation) condi);:}
+            ;
+
+
+var_iterador ::= VAR ENTERO ID:id IGUAL asignacion_iterador:op                 {: ArrayList<Variable> variables= new ArrayList<Variable>(); variables.add(new Variable((Token ) id, TipoDato.ENTERO, "", true)); RESULT = new DeclaracionVar(variables, true, (Operation)op);:}
+            | VAR DOBLE ID:id IGUAL asignacion_iterador:op                     {: ArrayList<Variable> variables= new ArrayList<Variable>(); variables.add(new Variable((Token ) id, TipoDato.DECIMAL, "", true)); RESULT = new DeclaracionVar(variables, true, (Operation)op);:}
+            | ID:id IGUAL asignacion_iterador:op                           {:RESULT = new Asignacion((Operation) op, (Token) id, true);:}
+            ;
+
+asignacion_iterador ::=  ID:val                        {:RESULT = new Operation(new Dato(false,(Token) val,TipoDato.ENTERO,val.getLexeme()));:}
+                |   NUM_ENTERO:val                     {:RESULT = new Operation(new Dato(true,(Token) val,TipoDato.ENTERO));:}          
+                |  DECIMAL:val                         {:RESULT = new Operation(new Dato(true,(Token) val,TipoDato.DECIMAL));:}  
+                ;
+
+
+op_incremt_decremet_for ::= ID:id INCREMENT                        {:NodoOperation nodLeft = new NodoOperation(new Dato(false, (Token) id, TipoDato.ENTERO, id.getLexeme())); NodoOperation nodRight = new NodoOperation(new Dato(true, 1, TipoDato.ENTERO)); NodoOperation root = new NodoOperation(TipoOperacion.SUMA, nodLeft, nodRight ); RESULT = new Asignacion(new Operation(root), (Token) id, true);:}
+                    | ID:id DECREMENT                              {:NodoOperation nodLeft = new NodoOperation(new Dato(false, (Token) id, TipoDato.ENTERO, id.getLexeme())); NodoOperation nodRight = new NodoOperation(new Dato(true, 1, TipoDato.ENTERO)); NodoOperation root = new NodoOperation(TipoOperacion.RESTA, nodLeft, nodRight); RESULT = new Asignacion(new Operation(root), (Token) id, true);:}
+                    | ID:id IGUAL asignacion:asig                                        {:RESULT = new Asignacion((Operation)asig, (Token)id, true);  :}
+                    | ID:id SUMA_IMPLICITA  terminales_increment_fun:nodRight                             {:NodoOperation nodLeft = new NodoOperation(new Dato(false, (Token) id, TipoDato.ENTERO, id.getLexeme())); NodoOperation root = new NodoOperation(TipoOperacion.SUMA, nodLeft, (NodoOperation) nodRight ); RESULT = new Asignacion(new Operation(root), (Token) id, true);:}
+                    ;
+
+
+
+definir_while ::= MIENTRAS PARENTESISA condition:cond PARENTESISC  LLAVEA sentencias:sent LLAVEC                                            {:RESULT = new SentenciaWhile((ArrayList<Instruccions> )sent, (Operation) cond, new TablaSimbol(errorsSemanticos));:}               
+        ;
+
+
+
+definir_dowhile ::= HACER LLAVEA sentencias:sent LLAVEC MIENTRAS PARENTESISA condition:cond PARENTESISC PUNTOCOMA                            {:RESULT = new SentenciaDoWhile((ArrayList<Instruccions> )sent, (Operation) cond, new TablaSimbol(errorsSemanticos));:}          
+        ;
+
+
+funcion_mensaje ::= MENSAJE PARENTESISA asignacion:rootOp PARENTESISC PUNTOCOMA             {:RESULT = new Mensaje((Operation) rootOp);:}
+                ;
+
+
+
+definir_fun_principal ::= PRINCIPAL:id PARENTESISA PARENTESISC  LLAVEA sentencias:inst LLAVEC   {:RESULT = new Funcion(parametros, new TablaSimbol(errorsSemanticos, true),id.getLexeme(),(Token) id, (ArrayList<Instruccions>) inst); :}    
+                ;
+definir_fun_arreglo ::= definir_tipo_arreglo definir_sin_dimens IGUAL asignacion_arreglo:arrOp  PUNTOCOMA  {:pista.capturarArregloGlobales(tipo, cont, contDimes, (ArrayList<Operation>)arrOp ); cont = 0; contDimes = 0;:}           
+                | definir_tipo_arreglo definir_dimension_arreglo:arrOp  PUNTOCOMA                     {:pista.captruarDeclaracionArreglo(tipo, (ArrayList<Operation>) arrOp);:}                                        
+                ;
+
+definir_tipo_arreglo ::= VAR tipo ARREGLO ids CORCHETA                                                                  
+                ;
+
+ids ::= ID:id COMA ids                                                          {:pista.getTableSimbolGoblal().capturarIdsArr((Token) id);:}                                  
+        | ID:id                                                                 {:pista.getTableSimbolGoblal().capturarIdsArr((Token) id);:}        
+        ;
+ 
+definir_dimension_arreglo ::=  asignacion:op CORCHETC CORCHETA definir_dimension_arreglo:arrs           {:ArrayList<Operation> operations =( ArrayList<Operation>) arrs; operations.add(0,(Operation)op); RESULT = operations; :}
+                        |   asignacion:op CORCHETC                                              {:ArrayList<Operation> operations = new ArrayList<>(); operations.add((Operation)op); RESULT = operations;:}
+                        ;
+
+
+definir_sin_dimens ::=   CORCHETC  CORCHETA definir_sin_dimens                          {:cont++;:}
+                | CORCHETC                                                      {:cont++;:}
+                ;
+
+asignacion_arreglo ::= LLAVEA asignaciones_recursivas:arr LLAVEC                                {:contDimes++; RESULT = arr ;:}
+                | LLAVEA  varios_dimensiones:arr LLAVEC                                         {:RESULT = arr ;:}
+                ;
+
+varios_dimensiones ::= LLAVEA asignaciones_recursivas:arr1  LLAVEC:tok COMA varios_dimensiones:arr2                     {:contDimes++; RESULT = pista.unirOperaciones((ArrayList<Operation>) arr1, (ArrayList<Operation>) arr2, (Token) tok);:}                                                   
+                | LLAVEA asignaciones_recursivas:arrs LLAVEC                                                            {:contDimes++; RESULT = arrs;:}
+                ;
+
+asignaciones_recursivas ::= asignacion:op COMA asignaciones_recursivas:arrs             {:ArrayList<Operation> operations =( ArrayList<Operation>) arrs; operations.add(0,(Operation)op); RESULT = operations; :}         
+                        | asignacion:op                                                 {:ArrayList<Operation> operations = new ArrayList<>(); operations.add((Operation)op); RESULT = operations;:}         
+                        ;
+
+
+
+decla_array_inicializado ::= def_tipo_arreglo_fun definir_sin_dimens IGUAL asignacion_arreglo:arrOp  PUNTOCOMA  {:RESULT = new ManejadorArreglos(pista.getSizeArray(), (ArrayList<Operation>) arrOp, pista.getTableSimbolGoblal().getIds(), tipo, cont, contDimes, errorsSemanticos);  :}           
+                ;
+
+decla_arry ::=  def_tipo_arreglo_fun definir_dimension_arreglo:arrOp  PUNTOCOMA                         {:RESULT = new ManejadorArreglos(tipo, null, (ArrayList<Operation>) arrOp, pista.getTableSimbolGoblal().getIds());:}
+                ;
+
+
+def_tipo_arreglo_fun ::= VAR tipo ARREGLO ids_fun CORCHETA                                                                  
+                ;
+
+ids_fun ::= ID:id COMA ids                                                              {:pista.getTableSimbolGoblal().capturarIdsFun((Token) id);:}                                  
+        | ID:id                                                                         {:pista.getTableSimbolGoblal().capturarIdsFun((Token) id);:}        
+        ;
+
+
+
+asig_arreglo ::= ID:id CORCHETA definir_dimension_arreglo:arr IGUAL asignacion:rootOp PUNTOCOMA                    {:RESULT = new Asignacion((Operation) rootOp, (Token) id, (ArrayList<Operation>) arr);:}
+                ;
+
+
+
+valor_arreglo ::= ID:id  CORCHETA definir_dimension_arreglo:arr                       {:RESULT = new NodoOperation(new Dato(false,(Token) id,TipoDato.ENTERO, (ArrayList<Operation>) arr));:}
+                ;
+
+
+definir_fun_ordenar ::= ORDENAR PARENTESISA ID:id COMA formaOrdenar:tipoOr PARENTESISC  {:RESULT = new FuncionesArreglo((Token) id, (TipoOrdenamiento) tipoOr);:}
+                ;
+
+formaOrdenar ::= ASCENDENTE                             {:RESULT = TipoOrdenamiento.ASCENDENTE;:}
+        | DESCENDENTE                                   {:RESULT = TipoOrdenamiento.DESCENDENTE;:}
+        | PARES                                         {:RESULT = TipoOrdenamiento.PARES;:}
+        | IMPARES                                       {:RESULT = TipoOrdenamiento.IMPARES;:}
+        | PRIMOS                                        {:RESULT = TipoOrdenamiento.PRIMOS;:}
+        ;
+
+
+definir_fun_sumarizar ::= SUMARIZAR PARENTESISA ID:id PARENTESISC                   {:RESULT = new FuncionesArreglo((Token) id);:}
+       ;
+
+
+definir_fun_longitud ::= LONGITUD PARENTESISA ID:id PARENTESISC                   {:RESULT = new FuncionesArreglo((Token) id, true);:}
+                |  LONGITUD PARENTESISA CONT_CADENA:id PARENTESISC                   {:RESULT = new FuncionesArreglo((String) id.getLexeme(), true);:}
+       ;
+
+
+
+funcion_reproducir ::= REPRODUCIR PARENTESISA definir_sentencias_repro:repro  PARENTESISC          {:RESULT = repro;:}
+                ;
+
+definir_sentencias_repro ::= def_nota_musical:not COMA asignacion:oct COMA asignacion:milis COMA asignacion:can       {:RESULT = new SentenciaReproducir((String) not, (Operation) oct, (Operation) milis, (Operation) can) ;:}
+                ;
+
+
+def_nota_musical ::= NOTA_DO:nota                                    {:RESULT = nota.getLexeme();:}                               
+                | NOTA_DO_S:nota                                     {:RESULT = nota.getLexeme();:}                                
+                | NOTA_RE:nota                                       {:RESULT = nota.getLexeme();:}                             
+                | NOTA_RE_S:nota                                     {:RESULT = nota.getLexeme();:}                                
+                | NOTA_MI:nota                                       {:RESULT = nota.getLexeme();:}                               
+                | NOTA_FA:nota                                       {:RESULT = nota.getLexeme();:}                                    
+                | NOTA_FA_S:nota                                     {:RESULT = nota.getLexeme();:}                                
+                | NOTA_SOL:nota                                      {:RESULT = nota.getLexeme();:}                              
+                | NOTA_SOL_S:nota                                    {:RESULT = nota.getLexeme();:}                                
+                | NOTA_LA:nota                                       {:RESULT = nota.getLexeme();:}                               
+                | NOTA_LA_S:nota                                     {:RESULT = nota.getLexeme();:}                               
+                | SI:nota                                            {:RESULT = nota.getLexeme();:}
+                ;
+
+
+definir_fun_esperar ::= ESPERAR PARENTESISA asignacion:milis  COMA asignacion:can PARENTESISC                        {:RESULT = new SentenciaReproducir("Z", (Operation) milis, (Operation) can) ;:}
+                ;
+
+
